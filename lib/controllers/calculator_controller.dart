@@ -1,3 +1,4 @@
+import 'package:calculator_app_getx/database_services/history_database.dart';
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 
@@ -6,20 +7,21 @@ class CalculatorController extends GetxController {
 
   var firstNumber = '0'.obs;
   var mathResult = ''.obs;
-  var tempText = ''.obs;
   var operator = ''.obs;
 
   updateTextController() {
     editingController.text = mathResult.value;
   }
 
-  clearAll() {
+  // clear all the fields
+  clearAll() async {
     firstNumber.value = '';
     mathResult.value = '';
     operator.value = '';
     updateTextController();
   }
 
+  // add +/- sign in text
   changeNegativePositive() {
     if (mathResult.startsWith('-')) {
       mathResult.value = mathResult.value.replaceFirst('-', '');
@@ -29,6 +31,7 @@ class CalculatorController extends GetxController {
     updateTextController();
   }
 
+  // add digts in text
   inputNumber(String number) {
     if (mathResult.value == firstNumber.value) {
       firstNumber.value = mathResult.value;
@@ -41,6 +44,7 @@ class CalculatorController extends GetxController {
     }
   }
 
+  // insert . in text
   addDecimalPoint() {
     if (mathResult.contains('.')) return;
     if (mathResult.startsWith('0')) {
@@ -51,7 +55,9 @@ class CalculatorController extends GetxController {
     updateTextController();
   }
 
+  // perform operation according to operator
   selectOperation(String operation) {
+    // logic to calculate percentage
     if (operation == '%') {
       if (firstNumber.value == '') {
         firstNumber.value = '0';
@@ -98,8 +104,13 @@ class CalculatorController extends GetxController {
     }
 
     if (firstNumber.value != '' && firstNumber.value != '0') {
-      calculateResult(false);
-      operator.value = operation;
+      if (operator.value == operation) {
+        calculateResult(false);
+        operator.value = operation;
+      } else {
+        calculateResult(false);
+        operator.value = operation;
+      }
     } else {
       operator.value = operation;
       firstNumber.value = mathResult.value;
@@ -108,6 +119,7 @@ class CalculatorController extends GetxController {
     }
   }
 
+  // delete last digit from text
   deletedLastEntry() {
     if (mathResult.value.replaceAll('-', '').length > 1) {
       mathResult.value = mathResult.substring(0, mathResult.value.length - 1);
@@ -117,7 +129,15 @@ class CalculatorController extends GetxController {
     updateTextController();
   }
 
+  // logic to calculate
   calculateResult(bool isFromButton) {
+    HistoryHelper historyHelper = HistoryHelper();
+    var expression;
+    // var index;
+    if (firstNumber.value != '' && mathResult != '') {
+      expression = '$firstNumber $operator $mathResult = ';
+    }
+
     if (firstNumber.value == '') {
       firstNumber.value = '0';
     }
@@ -162,6 +182,15 @@ class CalculatorController extends GetxController {
       firstNumber.value = mathResult.value;
       updateTextController();
     }
+    // var tempHistory = history[index];
+    // history[index] = '$tempHistory $mathResult';
+
+    if (firstNumber.value != '' && mathResult != '') {
+      expression = expression + mathResult.toString();
+      historyHelper.insertCalculation(expression);
+    }
+
+    operator.value = '';
     if (isFromButton == true) {
       firstNumber.value = '';
     }

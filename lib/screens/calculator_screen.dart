@@ -1,6 +1,7 @@
-import 'dart:developer';
+// ignore_for_file: unrelated_type_equality_checks
 
 import 'package:calculator_app_getx/controllers/calculator_controller.dart';
+import 'package:calculator_app_getx/controllers/history_controller.dart';
 import 'package:calculator_app_getx/utils/konstants.dart';
 import 'package:calculator_app_getx/widgets/keyboard_button_widget.dart';
 import 'package:flutter/material.dart';
@@ -16,9 +17,12 @@ class CalculatorScreen extends StatefulWidget {
 class _CalculatorScreenState extends State<CalculatorScreen> {
   TextEditingController textFieldController = TextEditingController();
   ScrollController scrollController = ScrollController();
+
   bool historyViewVisiblity = false;
+
   final CalculatorController calculatorController =
       Get.put(CalculatorController());
+  final HistoryController historyController = Get.put(HistoryController());
 
   @override
   Widget build(BuildContext context) {
@@ -56,12 +60,15 @@ class _CalculatorScreenState extends State<CalculatorScreen> {
                       children: [
                         GestureDetector(
                           onTap: () {
-                            if (historyViewVisiblity == true) {
-                              historyViewVisiblity = false;
+                            // changing the visiblity to show or hide history
+                            historyController.changeVisiblity();
+
+                            if (historyController.visiblityBool != true) {
+                              historyController.history.clear();
                             } else {
-                              historyViewVisiblity = true;
+                              // initializing history controller to get history
+                              historyController.getHistory();
                             }
-                            setState(() {});
                           },
                           child: const Icon(
                             Icons.access_time,
@@ -120,53 +127,39 @@ class _CalculatorScreenState extends State<CalculatorScreen> {
                 mainAxisSize: MainAxisSize.min,
                 crossAxisAlignment: CrossAxisAlignment.end,
                 children: [
-                  Flexible(
-                    flex: 3,
-                    child: historyViewVisiblity == true
-                        ? historyContainerView(context)
-                        : GridView.builder(
-                            physics: const NeverScrollableScrollPhysics(),
-                            shrinkWrap: true,
-                            itemCount: buttonNums.length,
-                            gridDelegate:
-                                const SliverGridDelegateWithFixedCrossAxisCount(
-                              crossAxisCount: 3,
-                              childAspectRatio: 1,
+                  Obx(() {
+                    return Flexible(
+                      flex: 3,
+                      child: historyController.visiblityBool == true
+                          ? historyContainerView(context)
+                          : GridView.builder(
+                              physics: const NeverScrollableScrollPhysics(),
+                              shrinkWrap: true,
+                              itemCount: buttonNums.length,
+                              gridDelegate:
+                                  const SliverGridDelegateWithFixedCrossAxisCount(
+                                crossAxisCount: 3,
+                                childAspectRatio: 1,
+                              ),
+                              itemBuilder: (context, index) {
+                                return Padding(
+                                  padding: const EdgeInsets.all(5.0),
+                                  child: ButtonWidget(
+                                    onTap: () {
+                                      buttonClick(index);
+                                    },
+                                    buttonText: buttonNums[index],
+                                    buttonTextColor: index == 0
+                                        ? defaultRedColor
+                                        : (index == 1 || index == 2)
+                                            ? defaultGreenColor
+                                            : null,
+                                  ),
+                                );
+                              },
                             ),
-                            itemBuilder: (context, index) {
-                              return Padding(
-                                padding: const EdgeInsets.all(5.0),
-                                child: ButtonWidget(
-                                  onTap: () {
-                                    if (index == 0) {
-                                      calculatorController.clearAll();
-                                    } else if (index == 2) {
-                                      calculatorController
-                                          .selectOperation(buttonNums[index]);
-                                    } else if (index == 12) {
-                                      calculatorController
-                                          .changeNegativePositive();
-                                    } else if (index == 13) {
-                                      calculatorController
-                                          .inputNumber(buttonNums[index]);
-                                    } else if (index == 14) {
-                                      calculatorController.addDecimalPoint();
-                                    } else if (index >= 3 && index <= 11) {
-                                      calculatorController
-                                          .inputNumber(buttonNums[index]);
-                                    }
-                                  },
-                                  buttonText: buttonNums[index],
-                                  buttonTextColor: index == 0
-                                      ? defaultRedColor
-                                      : (index == 1 || index == 2)
-                                          ? defaultGreenColor
-                                          : null,
-                                ),
-                              );
-                            },
-                          ),
-                  ),
+                    );
+                  }),
                   Flexible(
                     flex: 1,
                     child: GridView.builder(
@@ -183,7 +176,7 @@ class _CalculatorScreenState extends State<CalculatorScreen> {
                           padding: const EdgeInsets.all(5.0),
                           child: ButtonWidget(
                             onTap: () {
-                              if (historyViewVisiblity != true) {
+                              if (historyController.visiblityBool != true) {
                                 if (index == 4) {
                                   calculatorController.calculateResult(true);
                                 } else {
@@ -211,52 +204,75 @@ class _CalculatorScreenState extends State<CalculatorScreen> {
     );
   }
 
-  Row historyContainerView(BuildContext context) {
+  Widget historyContainerView(BuildContext context) {
     return Row(
+      mainAxisAlignment: MainAxisAlignment.end,
       children: [
         Expanded(
           child: Column(
             children: [
-              SizedBox(
-                height: MediaQuery.of(context).size.height * 0.49,
-                child: Scrollbar(
-                  controller: scrollController,
-                  thumbVisibility: true,
-                  child: ListView.builder(
-                    controller: scrollController,
-                    shrinkWrap: true,
-                    itemCount: 10,
-                    itemBuilder: (context, index) {
-                      return Padding(
-                        padding: const EdgeInsets.all(12.0),
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.end,
-                          children: const [
-                            Text(
-                              '75+6',
-                              style: TextStyle(fontSize: 20),
-                            ),
-                            Text(
-                              '=81',
-                              style: TextStyle(
-                                  fontSize: 20, color: defaultGreenColor),
-                            ),
-                          ],
+              Obx(() {
+                return Container(
+                  alignment: Alignment.bottomCenter,
+                  height: MediaQuery.of(context).size.height * 0.49,
+                  child: historyController.history.isEmpty
+                      ? const Padding(
+                          padding: EdgeInsets.only(bottom: 15),
+                          child: Text(
+                            'No History Found',
+                            style: TextStyle(
+                                color: defaultGreenColor, fontSize: 25),
+                          ),
+                        )
+                      : Scrollbar(
+                          controller: scrollController,
+                          thumbVisibility: true,
+                          child: ListView.builder(
+                            controller: scrollController,
+                            shrinkWrap: true,
+                            itemCount: historyController.history.length,
+                            itemBuilder: (context, index) {
+                              var expression = historyController.history[index]
+                                      ['expression']
+                                  .toString()
+                                  .split('=');
+                              return Padding(
+                                padding: const EdgeInsets.all(12.0),
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.end,
+                                  children: [
+                                    Text(
+                                      expression[0],
+                                      style: const TextStyle(fontSize: 20),
+                                    ),
+                                    Text(
+                                      '=${expression[1]}',
+                                      style: const TextStyle(
+                                          fontSize: 20,
+                                          color: defaultGreenColor),
+                                    ),
+                                  ],
+                                ),
+                              );
+                            },
+                          ),
                         ),
-                      );
-                    },
+                );
+              }),
+              GestureDetector(
+                onTap: () {
+                  historyController.clearHistory();
+                },
+                child: Container(
+                  padding: const EdgeInsets.fromLTRB(30, 15, 30, 15),
+                  decoration: BoxDecoration(
+                    color: defaultGreyColor.withOpacity(0.8),
+                    borderRadius: BorderRadius.circular(30),
                   ),
-                ),
-              ),
-              Container(
-                padding: const EdgeInsets.fromLTRB(30, 15, 30, 15),
-                decoration: BoxDecoration(
-                  color: defaultGreyColor.withOpacity(0.8),
-                  borderRadius: BorderRadius.circular(30),
-                ),
-                child: const Text(
-                  'Clear History',
-                  style: TextStyle(fontSize: 20, fontWeight: FontWeight.w500),
+                  child: const Text(
+                    'Clear History',
+                    style: TextStyle(fontSize: 20, fontWeight: FontWeight.w500),
+                  ),
                 ),
               ),
             ],
@@ -264,5 +280,22 @@ class _CalculatorScreenState extends State<CalculatorScreen> {
         ),
       ],
     );
+  }
+
+  void buttonClick(int index) {
+    // handling button operations according to index
+    if (index == 0) {
+      calculatorController.clearAll();
+    } else if (index == 2) {
+      calculatorController.selectOperation(buttonNums[index]);
+    } else if (index == 12) {
+      calculatorController.changeNegativePositive();
+    } else if (index == 13) {
+      calculatorController.inputNumber(buttonNums[index]);
+    } else if (index == 14) {
+      calculatorController.addDecimalPoint();
+    } else if (index >= 3 && index <= 11) {
+      calculatorController.inputNumber(buttonNums[index]);
+    }
   }
 }
