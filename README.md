@@ -21,8 +21,8 @@ This repository contains a simple calculator app built using Flutter. The app ca
 
 ## Requirements
 
-Flutter SDK
-Android Studio or Visual Studio Code
+- Flutter SDK
+- Android Studio or Visual Studio Code
 
 ## Getting Started
 
